@@ -2,9 +2,8 @@ package org.elm.lang.core
 
 import com.intellij.openapi.util.text.StringUtil
 import com.intellij.psi.PsiDocumentManager
-import org.elm.lang.core.psi.ElmPsiElement
-import org.elm.lang.core.psi.indentStyle
-import org.elm.lang.core.psi.startOffset
+import com.intellij.psi.PsiElement
+import org.elm.lang.core.psi.*
 import org.elm.utils.getIndent
 import kotlin.math.ceil
 
@@ -23,22 +22,6 @@ fun String.toElmLowerId(): String =
         }
 
 /**
- * Returns the element's text content where each line has been normalized such that:
- *
- *   1) it starts with a non-whitespace character
- *   2) relative indentation is preserved
- *
- * This is useful when manually building strings involving multi-line Elm expressions and declarations.
- */
-val ElmPsiElement.textWithNormalizedIndents: String
-    get() {
-        val firstColumn = StringUtil.offsetToLineColumn(this.containingFile.text, this.startOffset).column
-        return this.text.lines().mapIndexed { index: Int, s: String ->
-            if (index == 0) s else s.drop(firstColumn)
-        }.joinToString("\n")
-    }
-
-/**
  * Build a string of indented text lines. Useful for multi-line code generation.
  *
  * @see buildIndentedText
@@ -47,7 +30,9 @@ class IndentedTextBuilder(startLevel: Int, val indentSize: Int) {
     var level: Int = startLevel
     private var buffer = StringBuilder()
 
-    fun appendLine(str: String = "") {
+    fun build() = buffer.toString()
+
+    private fun appendInternal(str: String = "") {
         if (str.isBlank()) {
             buffer.appendln()
             return
@@ -56,18 +41,34 @@ class IndentedTextBuilder(startLevel: Int, val indentSize: Int) {
         buffer.appendln(str)
     }
 
-    fun build() = buffer.toString()
+    fun appendLine(str: String = "") {
+        require(!str.contains('\n')) {
+            "If you're trying to append the contents of a PsiElement, use `appendElement()` instead"
+        }
+        appendInternal(str)
+    }
+
+    fun appendElement(element: ElmPsiElement?) {
+        if (element == null) return
+        for (line in element.textWithNormalizedIndents.lines()) {
+            appendLine(line)
+        }
+    }
+
+    fun appendElementSubstituting(element: PsiElement, targetElement: PsiElement, replacement: String) {
+        // TODO [kl] multi-line indents need to be normalized here too!
+        val newText = element.textReplacing(targetElement, replacement)
+        appendInternal(newText)
+    }
 }
 
 /**
  * Build a string of indented text that can be used to replace [element] in the source editor.
  *
  * The indent size is determined based on the user's preference in IntelliJ code style settings.
- *
- * @see ElmPsiElement.textWithNormalizedIndents
  */
-fun buildIndentedText(element: ElmPsiElement, builder: (IndentedTextBuilder).() -> Unit): String {
-    val doc = PsiDocumentManager.getInstance(element.project).getDocument(element.elmFile)
+fun buildIndentedText(element: PsiElement, builder: (IndentedTextBuilder).() -> Unit): String {
+    val doc = PsiDocumentManager.getInstance(element.project).getDocument(element.containingFile)
             ?: error("Failed to find document for $element")
     val existingIndent = doc.getIndent(element.startOffset)
     val indentSize = element.indentStyle.INDENT_SIZE
@@ -75,4 +76,34 @@ fun buildIndentedText(element: ElmPsiElement, builder: (IndentedTextBuilder).() 
     val b = IndentedTextBuilder(startLevel, indentSize)
     b.builder()
     return b.build()
+}
+
+/**
+ * Returns the element's text content where each line has been normalized such that:
+ *
+ *   1) it starts with a non-whitespace character
+ *   2) relative indentation is preserved
+ *
+ * This is useful when manually building strings involving multi-line Elm expressions and declarations.
+ */
+private val ElmPsiElement.textWithNormalizedIndents: String
+    get() {
+        val firstColumn = StringUtil.offsetToLineColumn(this.containingFile.text, this.startOffset).column
+        return this.text.lines().mapIndexed { index: Int, s: String ->
+            if (index == 0) s else s.drop(firstColumn)
+        }.joinToString("\n")
+    }
+
+/**
+ * Returns the element's text content where [child] has been replaced with [newText].
+ *
+ * If [child] is the element itself, then [newText] is returned as-is.
+ */
+private fun PsiElement.textReplacing(child: PsiElement, newText: String): String {
+    if (child === this) return newText
+    require(child in descendants)
+    val myText = text
+    val start = child.offsetIn(this)
+    val end = start + child.textLength
+    return myText.replaceRange(start, end, newText)
 }

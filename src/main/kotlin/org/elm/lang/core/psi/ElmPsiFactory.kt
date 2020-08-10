@@ -157,19 +157,8 @@ class ElmPsiFactory(private val project: Project) {
                 ?: error("Failed to create case of branches from $patterns")
     }
 
-    fun createLetInWrapper(existingIndent: String, indent:String, newDeclName: String, newDeclBody: String, bodyText: String): ElmLetInExpr {
-        // NOTE: Assumes that each line in newDeclBody has had its indent normalized to match the indent of the first line.
-        //       Each line of newDeclBody must start with a non-whitespace character.
-        val newDeclBodyIndented = newDeclBody.lines().joinToString("\n") { "$existingIndent$indent$indent$it" }
-        val code = """
-        |foo =
-        |${existingIndent}let
-        |${existingIndent}$indent$newDeclName =
-        |$newDeclBodyIndented
-        |${existingIndent}in
-        |${existingIndent}$bodyText
-        """.trimMargin()
-        return createFromText<ElmValueDeclaration>(code)
+    fun createLetInWrapper(letExprText: String): ElmLetInExpr {
+        return createFromText<ElmValueDeclaration>("foo = $letExprText")
                 ?.descendantOfType()
                 ?: error("Failed to create let/in wrapper")
     }

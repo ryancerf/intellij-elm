@@ -1,6 +1,5 @@
 package org.elm.ide.refactoring
 
-import com.intellij.application.options.CodeStyle
 import junit.framework.TestCase
 import org.elm.lang.ElmTestBase
 import org.elm.lang.core.psi.ElmExpressionTag
@@ -426,6 +425,19 @@ f =
                 k
     in
     number
+""")
+
+
+    fun `test is not confused when replacing an element that looks like another element`() = doTest("""
+f =
+    3 + {-caret-}3
+""", listOf("3", "3 + 3"), 0, """
+f =
+    let
+        number =
+            3
+    in
+    3 + number
 """)
 
 

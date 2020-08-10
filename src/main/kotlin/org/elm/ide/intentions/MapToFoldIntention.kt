@@ -8,7 +8,6 @@ import org.elm.lang.core.buildIndentedText
 import org.elm.lang.core.psi.ElmPsiFactory
 import org.elm.lang.core.psi.ancestors
 import org.elm.lang.core.psi.elements.ElmFunctionCallExpr
-import org.elm.lang.core.textWithNormalizedIndents
 
 class MapToFoldIntention : ElmAtCaretIntentionActionBase<MapToFoldIntention.Context>() {
     data class Context(val mapInvocation: ElmFunctionCallExpr)
@@ -32,7 +31,6 @@ class MapToFoldIntention : ElmAtCaretIntentionActionBase<MapToFoldIntention.Cont
         val itemVarName = uniqueValueName(mapCallExpr, "item")
         val accVarName = uniqueValueName(mapCallExpr, "result")
         val mapFuncText = mapCallExpr.arguments.toList().first().text
-        val itemsText = mapCallExpr.arguments.toList().getOrNull(1)?.text.orEmpty()
 
         val newCallText = if (mapFuncText.contains("\n")) {
             // multi-line case
@@ -41,20 +39,19 @@ class MapToFoldIntention : ElmAtCaretIntentionActionBase<MapToFoldIntention.Cont
                 level++
                 appendLine("""(\$itemVarName $accVarName ->""")
                 level++
-                for (line in mapCallExpr.arguments.first().textWithNormalizedIndents.lines()) {
-                    appendLine(line)
-                }
+                appendElement(mapCallExpr.arguments.first())
                 level++
                 appendLine(itemVarName)
                 appendLine(":: $accVarName")
                 level -= 2
                 appendLine(")")
                 appendLine("[]")
-                appendLine(itemsText)
+                appendElement(mapCallExpr.arguments.toList().getOrNull(1))
             }
 
         } else {
             // single-line case
+            val itemsText = mapCallExpr.arguments.toList().getOrNull(1)?.text.orEmpty()
             "List.foldr (\\$itemVarName $accVarName -> $mapFuncText $itemVarName :: $accVarName) [] $itemsText"
         }
 
