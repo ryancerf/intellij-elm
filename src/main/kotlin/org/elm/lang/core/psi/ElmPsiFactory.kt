@@ -121,6 +121,10 @@ class ElmPsiFactory(private val project: Project) {
             createFromText("f = $num")
                     ?: error("Invalid number: `$num`")
 
+    fun createExpr(text: String): ElmExpressionTag =
+            createFromText("f = $text")
+                    ?: error("Invalid expression: `$text`")
+
     fun createLambda(lambdaText: String): ElmParenthesizedExpr {
         return createFromText("f = ($lambdaText)")
                 ?: error("Invalid lambda: `$lambdaText`")
