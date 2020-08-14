@@ -127,9 +127,9 @@ private class ExpressionReplacer(
                 level -= 2
                 appendLine("in")
                 if (existingDecls.isNotEmpty() && elementToReplace is ElmLetInExpr) {
-                    appendElementSubstituting(elementToReplace.expression!!, chosenExpr, identifier.text)
+                    appendElementSubstituting(elementToReplace.expression!!, chosenExpr, identifier)
                 } else {
-                    appendElementSubstituting(elementToReplace, chosenExpr, identifier.text)
+                    appendElementSubstituting(elementToReplace, chosenExpr, identifier)
                 }
             }
             val newLetExpr = psiFactory.createLetInWrapper(code)

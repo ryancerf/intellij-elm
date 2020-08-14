@@ -22,7 +22,7 @@ f =
 """)
 
 
-    fun `test replace the let entirely, more complex usage expr`() = doTest(
+    fun `test replace the let entirely, single-line usage expr`() = doTest(
             """
 module Main exposing (..)
 f x =
@@ -34,6 +34,23 @@ f x =
 module Main exposing (..)
 f x =
     x + 0
+""")
+
+
+    fun `test replace the let entirely, multi-line usage expr`() = doTest(
+            """
+module Main exposing (..)
+f g h =
+    let
+        y = 0
+    in
+    g y
+        |> h
+""", """
+module Main exposing (..)
+f g h =
+    g 0
+        |> h
 """)
 
 
@@ -73,6 +90,28 @@ f g =
       , 1
       , 2
       ]
+""")
+
+
+    fun `test replace the let entirely, inlining a multi-line value that needs parens`() = doTest(
+            """
+module Main exposing (..)
+f g h =
+    let
+        y =
+            h
+                0
+                1
+    in
+    g y{-caret-}
+""", """
+module Main exposing (..)
+f g h =
+    g
+        (h
+            0
+            1
+        )
 """)
 
 

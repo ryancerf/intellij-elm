@@ -42,28 +42,41 @@ class IndentedTextBuilder(startLevel: Int, val indentSize: Int) {
     }
 
     fun appendLine(str: String = "") {
-        require(!str.contains('\n')) {
+        require('\n' !in str) {
             "If you're trying to append the contents of a PsiElement, use `appendElement()` instead"
         }
         appendInternal(str)
     }
 
-    fun appendElement(element: ElmPsiElement?) {
+    fun appendElement(element: PsiElement?) {
         if (element == null) return
         for (line in element.textWithNormalizedIndents.lines()) {
             appendLine(line)
         }
     }
 
-    fun appendElementSubstituting(element: PsiElement, targetElement: PsiElement, replacement: String) {
-        // TODO [kl] multi-line indents need to be normalized here too!
-        val newText = element.textReplacing(targetElement, replacement)
-        appendInternal(newText)
+    fun appendElementSubstituting(
+            element: PsiElement,
+            target: PsiElement,
+            replacement: PsiElement,
+            transform: (String) -> String = { s -> s }
+    ) {
+        // get the original range of `target`
+        val range = element.rangeFor(target)
+
+        // normalize the indents in `element` and compute adjusted range
+
+
+        // normalize the indents in `replacement`
+
+        // replace the text using the adjusted range
+
+        appendInternal("")
     }
 }
 
 /**
- * Build a string of indented text that can be used to replace [element] in the source editor.
+ * Build a string of indented text relative to [element]'s current level of indentation.
  *
  * The indent size is determined based on the user's preference in IntelliJ code style settings.
  */
@@ -86,7 +99,7 @@ fun buildIndentedText(element: PsiElement, builder: (IndentedTextBuilder).() -> 
  *
  * This is useful when manually building strings involving multi-line Elm expressions and declarations.
  */
-private val ElmPsiElement.textWithNormalizedIndents: String
+private val PsiElement.textWithNormalizedIndents: String
     get() {
         val firstColumn = StringUtil.offsetToLineColumn(this.containingFile.text, this.startOffset).column
         return this.text.lines().mapIndexed { index: Int, s: String ->
@@ -94,11 +107,6 @@ private val ElmPsiElement.textWithNormalizedIndents: String
         }.joinToString("\n")
     }
 
-/**
- * Returns the element's text content where [child] has been replaced with [newText].
- *
- * If [child] is the element itself, then [newText] is returned as-is.
- */
 private fun PsiElement.textReplacing(child: PsiElement, newText: String): String {
     if (child === this) return newText
     require(child in descendants)
@@ -106,4 +114,11 @@ private fun PsiElement.textReplacing(child: PsiElement, newText: String): String
     val start = child.offsetIn(this)
     val end = start + child.textLength
     return myText.replaceRange(start, end, newText)
+}
+
+private fun PsiElement.rangeFor(child: PsiElement): IntRange {
+    require(child in descendants)
+    val start = child.offsetIn(this)
+    val end = start + child.textLength
+    return IntRange(start, end - 1)
 }
